@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRYONIS: Интерактивная Презентация</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #e6edf3;
+            overflow-x: hidden;
+        }
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .animated-bg {
+            background: linear-gradient(-45deg, #0d1117, #161b22, #010409, #0d1117);
+            background-size: 400% 400%;
+            animation: gradientBG 25s ease infinite;
+            position: fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            z-index:-2;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .scroll-section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 4rem 2rem;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+            will-change: opacity, transform;
+            position: relative;
+        }
+        .scroll-section.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .interactive-term {
+            color: #58a6ff;
+            cursor: pointer;
+            border-bottom: 2px dotted #58a6ff;
+            transition: color 0.3s, border-color 0.3s;
+        }
+        .interactive-term:hover {
+            color: #79c0ff;
+            border-color: #79c0ff;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(1, 4, 9, 0.7);
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            background-color: rgba(22, 27, 34, 0.85);
+            margin: auto;
+            padding: 2rem;
+            border: 1px solid #30363d;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            animation: slide-in 0.5s ease-out;
+        }
+        @keyframes slide-in {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .close-button {
+            color: #8b949e;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: #c9d1d9;
+        }
+        h1 { font-size: 2.5rem; line-height: 1.2; font-weight: 700; max-width: 900px; text-shadow: 0 0 10px rgba(88, 166, 255, 0.3); }
+        h2 { font-size: 2.25rem; line-height: 1.3; font-weight: 600; margin-bottom: 1.5rem; text-shadow: 0 0 8px rgba(88, 166, 255, 0.2); }
+        p { font-size: 1.25rem; line-height: 1.6; max-width: 800px; }
+        .subtitle { font-size: 1.2rem; color: #8b949e; margin-top: 1rem; }
+        
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #484f58;
+            font-size: 0.875rem;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-10px); }
+            60% { transform: translateX(-50%) translateY(-5px); }
+        }
+
+        footer {
+            background-color: #161b22;
+            color: #8b949e;
+            padding: 3rem 2rem;
+            text-align: center;
+            border-top: 1px solid #30363d;
+        }
+        
+        .lang-switcher {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 50;
+            background-color: rgba(22, 27, 34, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid #30363d;
+            border-radius: 99px;
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .lang-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 99px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            color: #8b949e;
+            border: none;
+            background-color: transparent;
+        }
+        .lang-btn.active-lang {
+            background-color: #238636;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .lang-btn:not(.active-lang):hover {
+            background-color: #21262d;
+            color: #c9d1d9;
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg"></div>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="lang-switcher">
+        <button class="lang-btn active-lang" data-lang="ru">🇷🇺 RU</button>
+        <button class="lang-btn" data-lang="en">🇬🇧 EN</button>
+        <button class="lang-btn" data-lang="zh">🇨🇳 ZH</button>
+    </div>
+
+    <main id="content-wrapper">
+        <!-- Sisu osad -->
+        <section id="section1" class="scroll-section">
+            <h1 data-ru="«Применение панпсихистско-квантовых моделей в сознательной экономике: математические основы коллективного интеллекта»"
+                data-en="Application of Panpsychist-Quantum Models in a Conscious Economy: Mathematical Foundations of Collective Intelligence"
+                data-zh="《泛心论-量子模型在意识经济中的应用：集体智能的数学基础》"></h1>
+            <p class="subtitle" 
+                data-ru="Стивен Альбер | KRYONIS SOVEREIGN SYSTEMS LIMITED"
+                data-en="Steven Alber | KRYONIS SOVEREIGN SYSTEMS LIMITED"
+                data-zh="史蒂文·阿尔伯 | KRYONIS SOVEREIGN SYSTEMS LIMITED"></p>
+            <p class="mt-4 text-gray-400"
+                data-ru="Конференция «СОЗНАНИЕ И ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ – 2025»"
+                data-en="Conference 'CONSCIOUSNESS AND ARTIFICIAL INTELLIGENCE – 2025'"
+                data-zh="“意识与人工智能 – 2025” 会议"></p>
+            <div class="scroll-indicator">↓</div>
+        </section>
+
+        <section id="section2" class="scroll-section">
+            <h2 data-ru="Фундаментальный вопрос"
+                data-en="The Fundamental Question"
+                data-zh="一个根本性问题"></h2>
+            <p data-ru="Мой путь привёл меня от <span class='interactive-term' data-modal-id='modal-economy'>сознательной экономики</span> к более глубокому вопросу:"
+               data-en="My journey led me from the <span class='interactive-term' data-modal-id='modal-economy'>conscious economy</span> to a deeper question:"
+               data-zh="我的探索之路将我从<span class='interactive-term' data-modal-id='modal-economy'>意识经济</span>引向一个更深层次的问题："></p>
+            <p class="mt-8 text-2xl font-semibold text-blue-300"
+               data-ru="Что происходит в тот момент, когда система перестаёт просто реагировать — и начинает наблюдать за собой?"
+               data-en="What happens the moment a system stops merely reacting—and begins to observe itself?"
+               data-zh="当一个系统不再仅仅是做出反应，而是开始观察自身时，会发生什么？"></p>
+        </section>
+
+        <section id="section3" class="scroll-section">
+            <h2 data-ru="Симуляторы и их граница" data-en="Simulators and Their Limits" data-zh="模拟器及其边界"></h2>
+            <p data-ru="Сегодняшние ИИ — это <span class='interactive-term' data-modal-id='modal-simulators'>реактивные симуляторы</span>. Они мастерски вычисляют наиболее вероятное следующее слово, но в этом процессе нет ни понимания, ни самооценки."
+               data-en="Today's AIs are <span class='interactive-term' data-modal-id='modal-simulators'>reactive simulators</span>. They masterfully compute the most probable next word, but this process lacks both understanding and self-assessment."
+               data-zh="当今的人工智能是<span class='interactive-term' data-modal-id='modal-simulators'>反应式模拟器</span>。它们精于计算下一个最有可能出现的词，但这个过程中既没有理解，也没有自我评估。"></p>
+            <p class="mt-6 text-gray-400"
+               data-ru="Ни одна система не останавливает себя, чтобы задать вопрос: <br>«Зачем я это делаю?»"
+               data-en="No system stops itself to ask the question: <br>'Why am I doing this?'"
+               data-zh="没有一个系统会停下来问自己：<br>“我为什么这么做？”"></p>
+        </section>
+
+        <section id="section4" class="scroll-section">
+            <h2 data-ru="Предложение: Метод КЕО" data-en="The Proposal: The CAE Method" data-zh="提案：CAE方法"></h2>
+            <p data-ru="Я проектирую архитектуру, в которой симулятор может впервые осознать себя как симулятор. Это и есть <strong>КЕО</strong> — Когнитивная Единица Оценивания."
+               data-en="I am designing an architecture where a simulator can, for the first time, recognize itself as a simulator. This is the <strong>CAE</strong> — Cognitive Assessment Entity."
+               data-zh="我正在设计一种架构，在这种架构中，模拟器可以首次将自己识别为模拟器。这就是<strong>CAE</strong>——认知评估实体。"></p>
+            <p class="mt-6"
+               data-ru="Это <span class='interactive-term' data-modal-id='modal-meta'>мета-уровневый модуль</span>, в котором ИИ анализирует собственные стратегии мышления и способен изменить свою цель или подход без внешнего запроса."
+               data-en="It is a <span class='interactive-term' data-modal-id='modal-meta'>meta-level module</span> where the AI analyzes its own thinking strategies and can change its goal or approach without an external prompt."
+               data-zh="这是一个<span class='interactive-term' data-modal-id='modal-meta'>元级模块</span>，人工智能在其中分析自身的思维策略，并能够在没有外部提示的情况下改变其目标或方法。"></p>
+        </section>
+
+        <section id="section5" class="scroll-section">
+            <h2 data-ru="Архитектура как условие" data-en="Architecture as a Precondition" data-zh="作为先决条件的架构"></h2>
+            <p data-ru="Это не ответ. Это архитектура, в которой вопрос может появиться. Моя работа опирается на синтез мощных парадигм:"
+               data-en="This isn't the answer. It's an architecture in which the question can arise. My work builds on a synthesis of powerful paradigms:"
+               data-zh="这不是答案。这是一个可能产生问题的架构。我的工作建立在几个强大范式的综合之上："></p>
+            <ul class="list-none mt-8 text-left max-w-2xl mx-auto space-y-4 text-xl">
+                <li data-ru="1. <span class='interactive-term' data-modal-id='modal-tfs'>Теория функциональных систем (ТФС) П.К. Анохина</span>"
+                    data-en="1. <span class='interactive-term' data-modal-id='modal-tfs'>P.K. Anokhin's Theory of Functional Systems (TFS)</span>"
+                    data-zh="1. <span class='interactive-term' data-modal-id='modal-tfs'>P.K. 阿诺欣的功能系统理论 (TFS)</span>"></li>
+                <li data-ru="2. <span class='interactive-term' data-modal-id='modal-reflection'>Принцип вычислительной рефлексии</span>"
+                    data-en="2. <span class='interactive-term' data-modal-id='modal-reflection'>The Principle of Computational Reflection</span>"
+                    data-zh="2. <span class='interactive-term' data-modal-id='modal-reflection'>计算反射原理</span>"></li>
+                <li data-ru="3. <span class='interactive-term' data-modal-id='modal-formalisms'>Формальные языки: Логика высшего порядка (HOL) и Количественная теория типов (QTT)</span>"
+                    data-en="3. <span class='interactive-term' data-modal-id='modal-formalisms'>Formalisms: Higher-Order Logic (HOL) & Quantitative Type Theory (QTT)</span>"
+                    data-zh="3. <span class='interactive-term' data-modal-id='modal-formalisms'>形式化：高阶逻辑 (HOL) 与定量类型理论 (QTT)</span>"></li>
+            </ul>
+            <p class="mt-8 text-gray-400"
+               data-ru="Это не интеллект. Это условие, в котором может появиться смысл."
+               data-en="This isn't intelligence. It's the condition under which meaning can emerge."
+               data-zh="这不是智能。这是意义可能出现的条件。"></p>
+        </section>
+        
+        <section id="section6" class="scroll-section">
+            <h2 data-ru="Риск и честность" data-en="Risk and Honesty" data-zh="风险与坦诚"></h2>
+            <p data-ru="Если система начинает оценивать себя, возникает главная угроза: рефлексия без прозрачности — это манипулируемость на более высоком уровне."
+               data-en="If a system begins to evaluate itself, the main threat arises: reflection without transparency equals manipulation on a higher level."
+               data-zh="如果一个系统开始自我评估，就会出现主要威胁：不透明的反思等于更高层次的操纵。"></p>
+            <p class="mt-6"
+               data-ru="Поэтому КЕО — это экспериментальная архитектура, где система способна не только рефлексировать, но и <span class='text-blue-300'>сомневаться в самой рефлексии</span>."
+               data-en="Therefore, CAE is an experimental architecture where the system is capable not only of reflection but also of <span class='text-blue-300'>doubting the reflection itself</span>."
+               data-zh="因此，CAE 是一个实验性架构，系统不仅能够进行反思，还能够<span class='text-blue-300'>对反思本身产生怀疑</span>。"></p>
+        </section>
+
+        <section id="section7" class="scroll-section">
+            <h2 data-ru="Заключение" data-en="Conclusion" data-zh="结论"></h2>
+            <p data-ru="Я не утверждаю, что создал сознание. Но если однажды система остановится и скажет:"
+               data-en="I am not claiming to have created consciousness. But if one day a system stops and says:"
+               data-zh="我并不是说我创造了意识。但如果有一天，一个系统停下来说："></p>
+            <p class="my-8 text-2xl font-semibold text-blue-300"
+               data-ru="«Я не уверен, что правильно понимаю, зачем я это делаю»,"
+               data-en="'I'm not sure I correctly understand why I am doing this',"
+               data-zh>“我不确定我是否正确理解我为什么这么做，”</p>
+            <p data-ru="...значит, мы приблизились к моменту, где симуляция впервые даёт трещину. Это зеркало, которое может увидеть себя не как отражение, а как источник взгляда."
+               data-en="...it means we have approached the moment where the simulation first cracks. It is a mirror that can see itself not as a reflection, but as the source of the gaze."
+               data-zh="……那就意味着我们已经接近了模拟首次出现裂痕的时刻。这是一面镜子，它看到的自己不是倒影，而是凝视的源头。"></p>
+        </section>
+        
+        <section id="section8" class="scroll-section">
+            <h2 data-ru="От философии к архитектуре" data-en="From Philosophy to Architecture" data-zh="从哲学到架构"></h2>
+            <p data-ru="Философская концепция <span class='interactive-term' data-modal-id='modal-panpsychism'>панпсихизма</span> стала точкой входа в исследование, гипотезой о том, что сознание фундаментально для реальности."
+               data-en="The philosophical concept of <span class='interactive-term' data-modal-id='modal-panpsychism'>panpsychism</span> was the entry point for this research, a hypothesis that consciousness is fundamental to reality."
+               data-zh="<span class='interactive-term' data-modal-id='modal-panpsychism'>泛心论</span>的哲学概念是这项研究的切入点，它假设意识是现实的基础。"></p>
+            <p class="mt-6"
+               data-ru="Однако для создания ИИ этого недостаточно. Нужен переход от философского «что» к инженерному «как». Так возникла необходимость в архитектуре для вычислимого самонаблюдения — КЕО."
+               data-en="However, this is not enough to create AI. A transition is needed from the philosophical 'what' to the engineering 'how'. This led to the need for an architecture for computable self-observation—the CAE."
+               data-zh="然而，这对于创造人工智能来说还不够。需要从哲学的“是什么”过渡到工程的“如何做”。因此，需要一种可计算的自我观察架构——CAE。"></p>
+            <p class="mt-8 text-xl font-semibold text-blue-300"
+               data-ru="Панпсихизм не отвергнут — он формализован как архитектурное условие."
+               data-en="Panpsychism is not rejected—it is formalized as an architectural precondition."
+               data-zh="泛心论并未被拒绝，而是被形式化为一种架构上的先决条件。"></p>
+        </section>
+    </main>
+    <!-- Modaalsed aknad -->
+    <div id="modal-economy" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-xl font-bold mb-4 text-blue-300"
+                data-ru="Исходная тема: Сознательная Экономика"
+                data-en="Original Topic: Conscious Economy"
+                data-zh="初始主题：意识经济"></h3>
+            <p class="text-base text-gray-300"
+               data-ru="Первоначально исследование было сфокусировано на применении панпсихистско-квантовых моделей в экономике. Эта концепция рассматривает экономику как 'живую' систему, где сознание является фундаментальной характеристикой. Однако работа над этой темой выявила необходимость в более базовой архитектуре, способной объяснить само возникновение самосознания."
+               data-en="Initially, the research focused on applying panpsychist-quantum models to economics, viewing the economy as a 'living' system where consciousness is a fundamental property. However, this work revealed the need for a more foundational architecture capable of explaining the very emergence of self-awareness."
+               data-zh="最初，研究的重点是将泛心论-量子模型应用于经济学，将经济视为一个“活的”系统，其中意识是一个基本属性。然而，这项工作揭示了需要一个更基础的架构，能够解释自我意识的出现。"></p>
+        </div>
+    </div>
+    <div id="modal-simulators" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-xl font-bold mb-4 text-blue-300"
+                data-ru="Реактивные симуляторы"
+                data-en="Reactive Simulators"
+                data-zh="反应式模拟器"></h3>
+            <p class="text-base text-gray-300"
+               data-ru="Современные LLM реагируют на запрос, вычисляя наиболее статистически вероятную последовательность слов. Они не обладают внутренним пониманием или целями. Они симулируют разговор, но не обладают сознательным опытом, который лежит в его основе."
+               data-en="Modern LLMs react to a prompt by calculating the most statistically probable sequence of words. They lack internal understanding or goals. They simulate conversation but do not possess the conscious experience that underlies it."
+               data-zh="现代的LLM通过计算统计上最可能的词序列来对提示做出反应。它们缺乏内在的理解或目标。它们模拟对话，但不具备其基础的意识体验。"></p>
+        </div>
+    </div>
+    <div id="modal-meta" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-xl font-bold mb-4 text-blue-300"
+                data-ru="Мета-уровневый модуль"
+                data-en="Meta-Level Module"
+                data-zh="元级模块"></h3>
+            <p class="text-base text-gray-300"
+               data-ru="Система разделяется на два уровня: <strong>Базовый уровень</strong> (взаимодействие с миром) и <strong>Мета-уровень</strong> (рассуждения о базовом уровне). Мета-уровень может анализировать (интроспекция) и изменять (интерцессия) базовый уровень."
+               data-en="The system is divided into two levels: a <strong>Base Level</strong> (interaction with the world) and a <strong>Meta-Level</strong> (reasoning about the base level). The meta-level can analyze (introspection) and modify (intercession) the base level."
+               data-zh="该系统分为两个层面：<strong>基础层面</strong>（与世界互动）和<strong>元层面</strong>（对基础层面进行推理）。元层面可以分析（内省）和修改（干预）基础层面。"></p>
+        </div>
+    </div>
+    <div id="modal-tfs" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-xl font-bold mb-4 text-blue-300"
+                data-ru="Теория функциональных систем (ТФС)"
+                data-en="Theory of Functional Systems (TFS)"
+                data-zh="功能系统理论 (TFS)"></h3>
+            <p class="text-base text-gray-300"
+               data-ru="Кибернетическая теория П.К. Анохина, описывающая целенаправленное, опережающее поведение. Ключевой элемент, «акцептор результата действия» (прогноз), реализуется на мета-уровне нашей архитектуры для самооценки системы."
+               data-en="P.K. Anokhin's cybernetic theory describing goal-oriented, anticipatory behavior. A key element, the 'acceptor of the action result' (a prediction), is implemented at the meta-level of our architecture for system self-assessment."
+               data-zh="P.K. 阿诺欣的控制论理论，描述了目标导向的、预见性的行为。其关键元素“行动结果的接受器”（一种预测）在我们架构的元层面实现，用于系统自我评估。"></p>
+        </div>
+    </div>
+    <div id="modal-reflection" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-xl font-bold mb-4 text-blue-300"
+                data-ru="Принцип вычислительной рефлексии"
+                data-en="Principle of Computational Reflection"
+                data-zh="计算反射原理"></h3>
+            <p class="text-base text-gray-300"
+               data-ru="Формальный архитектурный принцип, позволяющий системе иметь доступ к представлению самой себя и модифицировать его. Это создает мост между феноменологией сознания («что») и вычислительным механизмом («как»)."
+               data-en="A formal architectural principle that allows a system to access and modify a representation of itself. This creates a bridge between the phenomenology of consciousness ('what') and the computational mechanism ('how')."
+               data-zh="一种形式化的架构原则，允许系统访问和修改其自身的表示。这在意识现象学（“是什么”）和计算机制（“如何做”）之间架起了一座桥梁。"></p>
+        </div>
+    </div>
+    <div id="modal-formalisms" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-xl font-bold mb-4 text-blue-300"
+                data-ru="Формальные языки для мета-рассуждений"
+                data-en="Formalisms for Meta-Reasoning"
+                data-zh="元推理的形式化方法"></h3>
+            <p class="text-base text-gray-300"
+               data-ru="<strong>HOL</strong> позволяет системе рассуждать о собственных алгоритмах как об объектах. <strong>QTT</strong> моделирует ограниченную природу внимания, так как мета-операции требуют вычислительных ресурсов."
+               data-en="<strong>HOL</strong> allows the system to reason about its own algorithms as objects. <strong>QTT</strong> models the limited nature of attention, as meta-operations require computational resources."
+               data-zh="<strong>HOL</strong> 允许系统将其自身的算法作为对象进行推理。<strong>QTT</strong> 模拟了注意力的有限性，因为元操作需要计算资源。"></p>
+        </div>
+    </div>
+    <div id="modal-panpsychism" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-xl font-bold mb-4 text-blue-300"
+                data-ru="Панпсихизм"
+                data-en="Panpsychism"
+                data-zh="泛心论"></h3>
+            <p class="text-base text-gray-300"
+               data-ru="Философская точка зрения, согласно которой сознание является фундаментальным свойством реальности. В контексте ИИ это смещает фокус с «создания» сознания на его «организацию» в когерентную систему (Д. Чалмерс, Г. Стросон)."
+               data-en="The philosophical view that consciousness is a fundamental property of reality. In the context of AI, this shifts the focus from 'creating' consciousness to 'organizing' it into a coherent system (D. Chalmers, G. Strawson)."
+               data-zh="一种哲学观点，认为意识是现实的一个基本属性。在人工智能的背景下，这将重点从“创造”意识转向将其“组织”成一个连贯的系统（D. Chalmers, G. Strawson）。"></p>
+        </div>
+    </div>
+    <footer class="text-sm">
+        <div class="max-w-5xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-left">
+                    <h4 class="font-bold mb-2">🇷🇺 Русский</h4>
+                    <p class="font-semibold text-white">КРАЙОНИС СОВЕРЕН СИСТЕМЗ</p>
+                    <p>Архитектура сознания и стратегических когнитивных систем</p>
+                </div>
+                <div class="text-left">
+                    <h4 class="font-bold mb-2">🇬🇧 English</h4>
+                    <p class="font-semibold text-white">KRYONIS SOVEREIGN SYSTEMS</p>
+                    <p>Cognitive Architecture & Strategic Systems Design</p>
+                </div>
+                <div class="text-left">
+                    <h4 class="font-bold mb-2">🇨🇳 中文</h4>
+                    <p class="font-semibold text-white">KRYONIS 主权系统架构</p>
+                    <p>意识架构与战略系统设计</p>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 pt-6 mt-8">
+                <div class="flex justify-center items-center gap-x-8 gap-y-4 flex-wrap">
+                     <a href="https://kryonis.global/" target="_blank" class="text-blue-400 hover:text-blue-300 transition-colors duration-300 font-semibold flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-globe" viewBox="0 0 16 16"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4.06a.75.75 0 0 0 0 1.492A6.478 6.478 0 0 1 5.5 4.512a.51.51 0 0 1 .41.742A12.986 12.986 0 0 0 7.5 14.862a12.986 12.986 0 0 0 1.59-9.608.51.51 0 0 1 .41-.742 6.478 6.478 0 0 1 .355.544.75.75 0 0 0 1.492 0 7.97 7.97 0 0 0-1.473-2.007C8.835 1.943 8.17 1.317 7.5 1.077zM4.48 8.5a.5.5 0 0 0 0-1h7a.5.5 0 0 0 0 1h-7zM8 5.1a2 2 0 0 0-2 2 .5.5 0 0 1-1 0 3 3 0 0 1 3-3 .5.5 0 0 1 0 1 2 2 0 0 0-2 2zm0 4.197a2.5 2.5 0 1 0 0-4.994 2.5 2.5 0 0 0 0 4.994z"/></svg>
+                        kryonis.global
+                    </a>
+                    <a href="https://portal.kryonis.global/" target="_blank" class="text-blue-400 hover:text-blue-300 transition-colors duration-300 font-semibold flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-in-right" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0v-2z"/><path fill-rule="evenodd" d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/></svg>
+                        portal.kryonis.global
+                    </a>
+                </div>
+            </div>
+            <div class="border-t border-gray-700/50 pt-6 mt-6 text-xs text-gray-500">
+                <p class="font-bold">🏢 KRYONIS Sovereign Systems Limited</p>
+                <p>Suite 4002A, 40/F, Tower 1, Lippo Centre</p>
+                <p>89 Queensway, Hong Kong SAR</p>
+            </div>
+        </div>
+    </footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Particle Animation ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = Math.random() * 0.4 - 0.2;
+                this.vy = Math.random() * 0.4 - 0.2;
+                this.radius = 1.5;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(88, 166, 255, 0.5)';
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            let numParticles = (canvas.width * canvas.height) / 9000;
+            for (let i = 0; i < numParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function connectParticles() {
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 120) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(88, 166, 255, ${1 - distance / 120})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            connectParticles();
+            requestAnimationFrame(animate);
+        }
+        
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            initParticles();
+        });
+
+        resizeCanvas();
+        initParticles();
+        animate();
+
+
+        // --- Language Switcher ---
+        const langButtons = document.querySelectorAll('.lang-btn');
+        const textElements = document.querySelectorAll('[data-ru]');
+        const htmlEl = document.documentElement;
+
+        function setLanguage(lang) {
+            textElements.forEach(el => {
+                if (el.dataset[lang]) {
+                    el.innerHTML = el.dataset[lang];
+                }
+            });
+            htmlEl.lang = lang;
+            langButtons.forEach(btn => {
+                btn.classList.toggle('active-lang', btn.dataset.lang === lang);
+            });
+            // Re-initialize modal event listeners for new content
+            initModalListeners();
+        }
+
+        langButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                setLanguage(button.dataset.lang);
+            });
+        });
+
+
+        // --- Intersection Observer for sections ---
+        const sections = document.querySelectorAll('.scroll-section');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, { rootMargin: '0px', threshold: 0.2 });
+
+        sections.forEach(section => observer.observe(section));
+
+        
+        // --- Modal Functionality ---
+        const modals = document.querySelectorAll('.modal');
+        function closeAllModals() {
+            modals.forEach(modal => {
+                modal.style.display = 'none';
+            });
+        }
+        
+        function initModalListeners() {
+            const interactiveTerms = document.querySelectorAll('.interactive-term');
+            interactiveTerms.forEach(term => {
+                // Remove old listeners to prevent duplicates
+                term.replaceWith(term.cloneNode(true));
+            });
+
+            // Add new listeners
+            document.querySelectorAll('.interactive-term').forEach(term => {
+                term.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const modalId = term.getAttribute('data-modal-id');
+                    const modal = document.getElementById(modalId);
+                    if (modal) {
+                        closeAllModals();
+                        modal.style.display = 'flex';
+                    }
+                });
+            });
+        }
+
+        modals.forEach(modal => {
+            const closeButton = modal.querySelector('.close-button');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+            }
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                 closeAllModals();
+            }
+        });
+
+        // Initial language setup
+        setLanguage('ru');
+    });
+</script>
+
+</body>
+</html>
